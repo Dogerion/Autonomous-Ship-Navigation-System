@@ -1,0 +1,22 @@
+# Nomoto Model & Environment Configuration
+T_range: [10.0, 20.0]             # Time constant range for uniform sampling (seconds)
+K_range: [0.1, 0.5]               # Ship gain range for uniform sampling (1/seconds)
+dt: 1                             # Time step (seconds)
+max_steps: 16                     # Maximum steps until ship attributes and course changes per episode
+bound_rudder_angle_rad: 0.610865  # Rudder Angle Change limit (radians, approx 35 degrees)
+bound_heading_error_rad: 3.141593 # Maximum theoretical heading error bound (radians, 180 degrees)
+bound_yaw_rate_rad: 1.0           # Maximum theoretical yaw rate bound (rad/s)
+init_heading_error_rad: 3.141593  # Initial heading error limit (radians, approx 180 degrees)
+
+# Wave disturbance parameters
+yaw_rate_noise_flag: True         # Enable/disable dynamic wave disturbance noise
+yaw_rate_noise_std: 0.01          # Dynamic wave disturbance noise (rad/s)
+
+# Early stopping (success) criteria
+bound_trial_rad: 0.034907         # Stable heading error tolerance (radians, approx 2 degrees)
+step_trial: 1                    # Number of consecutive steps required within tolerance to succeed
+
+# Reward Formulation weights: R = -(w1*psi^2 + w2*delta^2 + w3*delta_dot^2)
+w1_heading_error: 1.0             # Penalize course deviation
+w2_rudder_angle: 0.1              # Penalize mechanical rudder angle
+w3_rudder_rate: 0.5               # Penalize rate of change (wear and tear)

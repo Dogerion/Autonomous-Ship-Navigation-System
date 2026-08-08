@@ -6,5 +6,27 @@ dist/
 wheels/
 *.egg-info
 
+# Hydra runtime logs & multirun sweeps
+outputs/
+multirun/
+
+# TensorBoard logging output
+runs/
+
+# Model checkpoints and weights
+models/
+
 # Virtual environments
 .venv
+
+# OS-specific temporary files
+.DS_Store
+Thumbs.db
+
+# Local user/IDE configs
+.idea/
+.vscode/
+
+# Research papers (Need license)
+research/*.pdf
+research/*.Identifier

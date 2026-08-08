@@ -1,0 +1,17 @@
+# Two-Stage System ID Neural Network & Integral MPC Configs
+
+# System Identification Neural Network (PyTorch)
+sysid:
+  history_length: 10         # Length of rolling history window of [r, delta] fed to the NN
+  hidden_sizes: [32, 16]     # Hidden sizes for GRU and subsequent Linear layers [gru_size, linear_size]
+  learning_rate: 0.001       # Supervised learning optimizer rate
+  epochs: 50                 # Number of training epochs on the collected dataset
+  excitation_steps: 10000    # Pseudorandom Binary Sequence steps to collect training data
+
+# Receding Horizon MPC
+mpc:
+  prediction_horizon: 20     # N steps looked ahead by the controller
+
+# Evaluation Settings (Matches PPOManager format)
+eval:
+  n_eval_episodes: 20
