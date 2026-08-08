@@ -1,6 +1,6 @@
-# MARIN: Hybrid Autonomous Surface Vessel (ASV) Navigation System
+# Hybrid Autonomous Surface Vessel (ASV) Navigation System
 
-MARIN is a state-of-the-art hybrid autonomous surface vessel navigation platform. Designed for high-fidelity maritime research, this project focuses on robust **course-keeping under stochastic wave disturbances and heavy ship dynamics domain randomization**.
+This platform is a state-of-the-art hybrid autonomous surface vessel navigation platform. Designed for high-fidelity maritime research, this project focuses on robust **course-keeping under stochastic wave disturbances and heavy ship dynamics domain randomization**.
 
 The platform is designed around the **Strategy Design Pattern**, allowing researchers to run fair head-to-head benchmarks between two advanced control architectures:
 1.  **Implicit Adaptive Reinforcement Learning**: A Recurrent PPO (`RecurrentPPO`) agent with an LSTM neural network brain that implicitly learns to identify and adapt to ship dynamics over time.
@@ -35,7 +35,7 @@ Where the control input is the *change* in rudder command $v_k = \Delta \delta_k
 ## Directory Structure
 
 ```text
-MARIN/
+/
 ├── pyproject.toml          # Project dependencies (managed by uv)
 ├── main.py                 # Core entry point (routes commands)
 ├── README.md               # You are here!
