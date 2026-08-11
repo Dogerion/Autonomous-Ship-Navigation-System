@@ -11,6 +11,7 @@ $$ \dot{I}_{\psi} = \psi $$
 
 We define the state vector $x$ and control vector $u$ at step $k$:
 $$ x_k = \begin{bmatrix} \psi_k \\ r_k \\ I_{\psi, k} \\ \delta_{k-1} \end{bmatrix}, \quad u_k = \begin{bmatrix} v_k \end{bmatrix} $$
+*(Where $v_k = \Delta \delta_k$ represents the change in rudder angle at step $k$)*
 
 Using Euler method with a time step $dt$, the continuous equations are discretized into the standard linear state-space form $x_{k+1} = A x_k + B u_k$, reflecting the exact cascading integration sequence of the environment:
 
@@ -45,7 +46,7 @@ $$
 Q = \begin{bmatrix} w_1 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & w_2 \end{bmatrix}
 $$
 
-Where **$R$** is the control penalty matrix (penalizing raw actuator speed $v_k$):
+Where **$R$** is the control penalty matrix (penalizing raw actuator speed $v_k = \Delta \delta_k$):
 $$
 R = \begin{bmatrix} w_3 \end{bmatrix}
 $$
@@ -67,7 +68,19 @@ The state penalties ($Q$ and $Q_N$) populate the top-left blocks of $P$, and the
 
 Because the solver objective includes a $\frac{1}{2}$ multiplier, all weights inside the code formulation may be multiplied by $2$ or scaled appropriately when placed into $P$, though standard block diagonal formulation applies mathematically:
 
-$$ P = \text{block\_diag}(Q, \dots, Q, Q_N, R, \dots, R) $$
+$$ 
+P = \begin{bmatrix}
+Q_0 & 0 & \dots & 0 & 0 & 0 & \dots & 0 \\
+0 & Q_1 & \dots & 0 & 0 & 0 & \dots & 0 \\
+\vdots & \vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \dots & Q_N & 0 & 0 & \dots & 0 \\
+0 & 0 & \dots & 0 & R_0 & 0 & \dots & 0 \\
+0 & 0 & \dots & 0 & 0 & R_1 & \dots & 0 \\
+\vdots & \vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \dots & 0 & 0 & 0 & \dots & R_{N-1} 
+\end{bmatrix}
+$$
+*(Where $P$ is a block diagonal matrix. For our time-invariant cost formulation, $Q_0 = Q_1 = \dots = Q_{N-1} = Q$ and $R_0 = R_1 = \dots = R_{N-1} = R$)*
 
 ### The Linear Vector ($q$)
 Because the augmented state perfectly links the previous rudder angle ($\delta_{k-1}$) to the current action without generating cross-terms in the objective function, the linear objective vector is completely zero:
