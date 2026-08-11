@@ -14,7 +14,7 @@ yaw_rate_noise_std: 0.01          # Dynamic wave disturbance noise (rad/s)
 
 # Early stopping (success) criteria
 bound_trial_rad: 0.034907         # Stable heading error tolerance (radians, approx 2 degrees)
-step_trial: 1                    # Number of consecutive steps required within tolerance to succeed
+step_trial: 1                     # Number of consecutive steps required within tolerance to succeed
 
 # Reward Formulation weights: R = -(w1*psi^2 + w2*delta^2 + w3*delta_dot^2)
 w1_heading_error: 1.0             # Penalize course deviation
