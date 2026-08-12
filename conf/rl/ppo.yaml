@@ -1,23 +1,24 @@
 # RNN PPO hyperparameters training settings
+model_name: ppo_vessel      # Base filename for saved models/checkpoints
 learning_rate: 0.0003
-n_steps: 128                # Lowered for fast trial
-batch_size: 64              # Must be a factor of n_steps (128 % 64 = 0)
-n_epochs: 3                 # Lowered for fast trial
+n_steps: 2048               # Rollout length per env (~128 episodes/rollout at max_steps=16)
+batch_size: 64             # Must divide n_steps * n_envs (2048 % 64 == 0)
+n_epochs: 10               # Optimization passes over each rollout buffer
 gamma: 0.99
 gae_lambda: 0.95
 clip_range: 0.2
 ent_coef: 0.0
-total_timesteps: 512        # Only do a few PPO rollouts (e.g. 512 / 128 = 4 updates)
-log_interval: 10
+total_timesteps: 1000000   # ~488 PPO updates (1e6 / 2048)
+log_interval: 1            # SB3 dumps to TensorBoard every `log_interval` iterations; keep <= total_timesteps/n_steps
 
 # Evaluation settings
 eval:
-  n_eval_episodes: 2
+  n_eval_episodes: 20
 
 # Hyperparameter Optimization Parameters
 hpo:
-  n_trials: 2               # Just run 2 trials to test the pipeline
-  n_eval_episodes: 3        # Number of episodes to run during evaluation checks inside HPO sweeps
+  n_trials: 20              # Number of Optuna trials
+  n_eval_episodes: 10       # Number of episodes to run during evaluation checks inside HPO sweeps
   learning_rate_min: 1e-5
   learning_rate_max: 1e-3
   gamma_min: 0.90

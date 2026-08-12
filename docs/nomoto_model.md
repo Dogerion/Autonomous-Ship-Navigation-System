@@ -1,14 +1,14 @@
 # The First-Order Nomoto Model
 
-This document provides a mathematical and physical overview of the first-order Nomoto model, which serves as the core physical engine for the vessel kinematics in the `NomotoEnv` simulation.
+This document explains the first-order Nomoto model, which drives the ship kinematics in the `NomotoEnv` simulation.
 
-## 1. Physical Background
+## 1. Background
 
-Maneuvering a large surface vessel is a highly complex hydrodynamic process involving 3 degrees of freedom (surge, sway, and yaw) and non-linear fluid damping.
+Maneuvering a surface vessel is a hydrodynamic process with 3 degrees of freedom (surge, sway, and yaw) and non-linear damping.
 
-In 1957, K. Nomoto demonstrated that for standard course-keeping and steering tasks where the ship is moving at a relatively constant forward speed (surge), the complex non-linear equations can be simplified into a highly accurate linear transfer function relating the **rudder angle ($\delta$)** to the **yaw rate ($r$)**. 
+In 1957, K. Nomoto showed that for course-keeping and steering at a roughly constant forward speed, these equations can be reduced to a linear transfer function relating the **rudder angle ($\delta$)** to the **yaw rate ($r$)**.
 
-This simplification is universally known as the First-Order Nomoto Model and is the global standard for autopilot design.
+This is the first-order Nomoto model, and it is a common starting point for autopilot design.
 
 ## 2. The Differential Equation
 
@@ -27,7 +27,7 @@ $$ \dot{\psi}(t) = r(t) $$
 
 ## 3. Understanding the Parameters ($K$ and $T$)
 
-The entire dynamic profile of the ship is governed by the two parameters $K$ and $T$. In our reinforcement learning setup, these parameters are strictly hidden from the agent and randomized via Domain Randomization to force the agent to learn an adaptive control policy.
+The ship's dynamics are set by the two parameters $K$ and $T$. In this project they are hidden from the controller and randomized each episode, so the controller has to adapt rather than memorize one ship.
 
 ### The Turning Gain ($K$)
 $K$ represents the steady-state turning ability of the vessel. 

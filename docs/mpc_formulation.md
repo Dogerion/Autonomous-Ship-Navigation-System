@@ -1,6 +1,6 @@
-# Linear Quadratic Programming (LQP) Formulation for Nomoto MPC
+# QP Formulation for the Nomoto MPC
 
-This document outlines the mathematical translation of the continuous-time Nomoto vessel kinematics and the target optimal control cost function into the standard discrete-time Quadratic Programming (QP) format required by solvers like OSQP.
+This document shows how the continuous-time Nomoto model and the control cost are turned into the discrete-time Quadratic Program (QP) that OSQP solves.
 
 ## 1. System Dynamics (State-Space Representation)
 
@@ -52,9 +52,9 @@ R = \begin{bmatrix} w_3 \end{bmatrix}
 $$
 
 ### Terminal Cost ($Q_N$)
-In highly stochastic environments (e.g., dynamic wave disturbances), heavily penalizing the final state of the horizon ($x_N$) can cause the controller to aggressively over-correct based on highly uncertain future predictions. 
+With random wave noise, heavily penalizing the final horizon state ($x_N$) can make the controller over-correct based on uncertain future predictions.
 
-To ensure the controller behaves robustly and smoothly in the presence of random noise, we do not apply an artificial terminal multiplier or use infinite-horizon approximations (like DARE). The terminal cost matrix is treated identically to the intermediate step cost matrix:
+To keep behavior smooth under noise, we do not add a terminal multiplier or an infinite-horizon approximation (like DARE). The terminal cost is the same as the per-step cost:
 $$ Q_N = Q $$
 
 ## 3. Standard QP Cast (The $P$ and $q$ Matrices)
@@ -64,9 +64,9 @@ $$ \text{Minimize} \quad \frac{1}{2} z^T P z + q^T z $$
 $$ \text{where} \quad z = \begin{bmatrix} x_0 \\ \vdots \\ x_N \\ u_0 \\ \vdots \\ u_{N-1} \end{bmatrix} $$
 
 ### The Hessian Matrix ($P$)
-The state penalties ($Q$ and $Q_N$) populate the top-left blocks of $P$, and the control penalty ($R$) populates the bottom-right blocks. Because the difference math is completely absorbed into the state augmentation, $P$ is a pure block diagonal matrix. No tridiagonal arithmetic is required.
+The state penalties ($Q$ and $Q_N$) fill the top-left blocks of $P$, and the control penalty ($R$) fills the bottom-right blocks. Because the rudder-rate term is folded into the augmented state, $P$ is block-diagonal with no cross-terms.
 
-Because the solver objective includes a $\frac{1}{2}$ multiplier, all weights inside the code formulation may be multiplied by $2$ or scaled appropriately when placed into $P$, though standard block diagonal formulation applies mathematically:
+Note that the solver objective carries a $\frac{1}{2}$ factor, so weights may need scaling by $2$ when placed into $P$. The block-diagonal structure is:
 
 $$ 
 P = \begin{bmatrix}
@@ -83,7 +83,7 @@ $$
 *(Where $P$ is a block diagonal matrix. For our time-invariant cost formulation, $Q_0 = Q_1 = \dots = Q_{N-1} = Q$ and $R_0 = R_1 = \dots = R_{N-1} = R$)*
 
 ### The Linear Vector ($q$)
-Because the augmented state perfectly links the previous rudder angle ($\delta_{k-1}$) to the current action without generating cross-terms in the objective function, the linear objective vector is completely zero:
+Because the augmented state carries the previous rudder angle ($\delta_{k-1}$) without producing cross-terms in the objective, the linear objective vector is zero:
 $$ q = \begin{bmatrix} 0 \\ \vdots \\ 0 \end{bmatrix} $$
 
 ## 4. Constraints

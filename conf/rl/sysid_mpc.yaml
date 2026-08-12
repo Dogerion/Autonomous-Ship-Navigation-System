@@ -1,4 +1,5 @@
 # Two-Stage System ID Neural Network & Integral MPC Configs
+model_name: sysid_mpc_vessel   # Base filename for saved models/checkpoints
 
 # System Identification Neural Network (PyTorch)
 sysid:
@@ -6,7 +7,8 @@ sysid:
   hidden_sizes: [32, 16]     # Hidden sizes for GRU and subsequent Linear layers [gru_size, linear_size]
   learning_rate: 0.001       # Supervised learning optimizer rate
   epochs: 50                 # Number of training epochs on the collected dataset
-  excitation_steps: 10000    # Pseudorandom Binary Sequence steps to collect training data
+  log_interval: 10           # Print MSE loss every N epochs during SysID training
+  excitation_steps: 10000    # Random-excitation steps (uniform random rudder) to collect training data
 
 # Receding Horizon MPC
 mpc:

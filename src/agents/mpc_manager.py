@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import scipy.sparse as sparse
-import scipy.linalg as la
 import osqp
 from collections import deque
 from src.agents.base_manager import BaseManager
@@ -53,18 +52,20 @@ class MPC:
     A receding horizon optimal controller formulating the course-keeping problem as a
     Quadratic Program (QP) solved via the OSQP solver.
     
-    At every timestep, it uses the discrete linear state-space representation of the 
-    1st-order Nomoto model:
+    At every timestep, it uses the discrete linear state-space representation of the
+    1st-order Nomoto model in augmented, delta-input form:
     x[t+1] = A x[t] + B u[t]
-    
-    State x = [psi (heading error), r (yaw rate), integral_psi (accumulated heading error)]
-    Control u = [delta (commanded rudder angle)]
-    
-    Using the predicted K_hat and T_hat from SysIDNet, it solves the QP over a prediction 
+
+    State  x = [psi (heading error), r (yaw rate), integral_psi (accumulated heading error), delta_{t-1} (previous rudder)]
+    Control u = [v (change in rudder angle, i.e. Delta delta)]
+
+    Using the predicted K_hat and T_hat from SysIDNet, it solves the QP over a prediction
     horizon 'N' to minimize the quadratic performance cost:
-    J = sum(w1*psi^2 + w2*delta^2 + w3*delta_dot^2 + w4*integral_psi^2)
-    
-    The solver strictly respects physical hardware constraints on the rudder angle boundaries 
+    J = sum(w1*psi^2 + w2*delta^2 + w3*v^2)
+    (heading error via w1, physical rudder angle via w2 on the augmented state, rudder rate via w3 on the control;
+    yaw rate r and integral_psi are not directly penalized in the objective)
+
+    The solver strictly respects physical hardware constraints on the rudder angle boundaries
     [-bound_rudder_angle_rad, +bound_rudder_angle_rad].
     It executes the very first optimal action from the computed horizon sequence
     and recalculates the entire trajectory at the next step.
@@ -239,7 +240,7 @@ class MPCManager(BaseManager):
         if not hasattr(self, 'sysid_net'):
             raise ValueError("Model not built! Call build_model() first.")
             
-        print(f"Stage 1: Collecting {self.cfg.rl.sysid.excitation_steps} steps of PRBS data...")
+        print(f"Stage 1: Collecting {self.cfg.rl.sysid.excitation_steps} steps of random-excitation data...")
         dataset_x = []
         dataset_y = []
         
@@ -255,10 +256,9 @@ class MPCManager(BaseManager):
             next_obs, reward, done, info = self.env.step(action)
             
             # obs is [[psi, r, delta, int_psi]]
-            # [yaw_rate, commanded_action] appended to history
-            # We use action[0][0]*bound to get the physical radian rudder commanded
-            cmd_rad = action[0][0] * self.cfg.env.bound_rudder_angle_rad
-            history_buffer.append([obs[0][1], cmd_rad]) 
+            # Append (yaw_rate, rudder) using the rudder stored in the observation so the pairing
+            # matches evaluation: each yaw rate is paired with the rudder that actually produced it.
+            history_buffer.append([obs[0][1], obs[0][2]])
             
             # Maintain rolling window
             if len(history_buffer) > history_len:
@@ -294,7 +294,7 @@ class MPCManager(BaseManager):
                 self.optimizer.step()
                 epoch_loss += loss.item()
             
-            if epoch % 10 == 0:
+            if epoch % self.cfg.rl.sysid.log_interval == 0:
                 print(f"Epoch {epoch}/{self.cfg.rl.sysid.epochs} - MSE Loss: {epoch_loss/len(dataloader):.6f}")
 
         print("SysID Training Complete!")

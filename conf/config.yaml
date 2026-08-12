@@ -1,12 +1,10 @@
 defaults:
   - env: nomoto
-  - rl: sysid_mpc
+  - rl: ppo
   - _self_
 
 project_name: "autonomous-vessel-rl"                      # Name for the project, used for saving models and logs
-agent_type: "sysid_mpc"                                         # Choose between: "ppo", "sysid_mpc"
 seed: 42                                                  # Random seed for reproducibility
-mode: "eval"                                             # Choose between: train, eval, optimize
-load_path: "models/autonomous-vessel-rl/sysid_mpc_vessel"  # If mode="eval", path to the .zip model
-model_name: "sysid_mpc_vessel"                           # Default name for saving models
-save_freq: 10                                             # How often to save checkpoints during training
+mode: "train"                                             # Choose between: train, eval, optimize
+load_path: "models/autonomous-vessel-rl/ppo_vessel"  # If mode="eval", path to the .zip model
+model_name: ${rl.model_name}                             # Per-agent model name, defined in the selected rl config

@@ -1,5 +1,6 @@
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
+from hydra.core.hydra_config import HydraConfig
 from src.utils import agent_selecter
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -8,7 +9,7 @@ def main(cfg: DictConfig):
     print("MARIN Hybrid Navigation System Loaded")
     print("=========================================")
     print(f"Project Name: {cfg.project_name}")
-    print(f"Agent Type: {cfg.agent_type}")
+    print(f"Agent Type: {HydraConfig.get().runtime.choices.rl}")
     print(f"Mode: {cfg.mode}")
     print("=========================================")
     

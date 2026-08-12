@@ -22,13 +22,12 @@ class NomotoEnv(gym.Env):
         )
         
         # Observation space: [heading_error (rad), yaw_rate (rad/s), rudder_angle (rad), integral_heading_error (rad*s)]
-        # Limits are fully configurable via the environment configuration
-        bound_heading_error = self.config.bound_heading_error_rad
-        bound_yaw_rate = self.config.bound_yaw_rate_rad
-        bound_integral = 1000.0  # Safe high boundary for integral accumulation
+        # Heading error, yaw rate and the integral term are unbounded accumulators (the physics never
+        # clips them), so they are declared as infinite to guarantee observations stay within the space.
+        # Only the rudder angle is a genuinely bounded, hardware-limited quantity.
         self.observation_space = spaces.Box(
-            low=np.array([-bound_heading_error, -bound_yaw_rate, -bound_rudder_angle, -bound_integral], dtype=np.float32),
-            high=np.array([bound_heading_error, bound_yaw_rate, bound_rudder_angle, bound_integral], dtype=np.float32),
+            low=np.array([-np.inf, -np.inf, -bound_rudder_angle, -np.inf], dtype=np.float32),
+            high=np.array([np.inf, np.inf, bound_rudder_angle, np.inf], dtype=np.float32),
             dtype=np.float32
         )
 
