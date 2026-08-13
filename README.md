@@ -5,7 +5,7 @@ A research project for ship course-keeping: holding a target heading under rando
 It uses the **Strategy pattern** to compare two controllers on the same task:
 
 1. **Reinforcement Learning (PPO)** — a `RecurrentPPO` agent with an LSTM policy. It learns to adapt to the ship's dynamics from the history of its observations, without being told the ship's parameters.
-2. **System Identification + MPC** — a two-stage controller. A GRU network (`SysIDNet`) estimates the ship's parameters online, and an augmented-state, delta-input Model Predictive Controller (solved with `OSQP`) computes the rudder command.
+2. **System Identification + MPC** — a two-stage controller. A GRU network (`SysIDNet`) estimates the ship's parameters online, and a Model Predictive Controller (solved with `OSQP`) computes the rudder command.
 
 ---
 
@@ -19,7 +19,7 @@ $$ T \dot{r} + r = K \delta $$
 
 where $r$ is the yaw rate, $\delta$ is the rudder angle, $K$ is the steering gain, and $T$ is the turning inertia (time constant).
 
-- **Domain randomization**: `K` and `T` are re-sampled from uniform ranges at every episode reset, so the controller faces a different ship each episode (from responsive speedboats to sluggish tankers) and never sees the true values.
+- **Domain randomization**: `K` and `T` are re-sampled from uniform ranges at every episode reset, so the controller faces a different ship each episode and never sees the true values.
 - **Integrated heading error ($\int \psi$)**: the observation includes the time-integral of the heading error. This gives a controller the information it needs to remove steady-state offset.
 - **Wave disturbance**: zero-mean Gaussian noise is added to the yaw rate each step to model wave action.
 
@@ -29,7 +29,7 @@ $$ R = -\left( w_1\,\psi^2 + w_2\,\delta^2 + w_3\,\Delta\delta^2 \right) $$
 
 ### 2. MPC Formulation
 
-The MPC uses an **augmented state** so that the rudder-rate penalty ($\Delta\delta^2$) can be written as a plain control cost instead of a cross-term:
+The MPC uses an augmented state so that the rudder-rate penalty ($\Delta\delta^2$) can be written as a plain control cost instead of a cross-term:
 
 $$ x_k = \begin{bmatrix} \psi_k \\ r_k \\ I_{\psi, k} \\ \delta_{k-1} \end{bmatrix}, \quad u_k = \begin{bmatrix} v_k \end{bmatrix} $$
 
@@ -95,7 +95,7 @@ Run training, evaluation, or tuning from the command line.
 > Any config value can be overridden with Hydra dot-notation, e.g.
 > `python main.py rl=ppo mode=train rl.total_timesteps=500000 seed=7`.
 
-### PPO (Reinforcement Learning)
+### RecurrentPPO (Reinforcement Learning)
 
 ```bash
 # Train
@@ -128,8 +128,6 @@ PPO training logs the standard Stable-Baselines3 scalars to **TensorBoard** unde
 tensorboard --logdir ./runs/
 # then open http://localhost:6006
 ```
-
-> SysID/MPC training and all evaluation runs print to the console (SysID loss per epoch; mean/std reward at the end of evaluation) rather than logging to TensorBoard.
 
 ---
 

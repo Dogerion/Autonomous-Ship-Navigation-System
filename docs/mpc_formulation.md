@@ -57,9 +57,9 @@ With random wave noise, heavily penalizing the final horizon state ($x_N$) can m
 To keep behavior smooth under noise, we do not add a terminal multiplier or an infinite-horizon approximation (like DARE). The terminal cost is the same as the per-step cost:
 $$ Q_N = Q $$
 
-## 3. Standard QP Cast (The $P$ and $q$ Matrices)
+## 3. Standard QP Objective Function (The $P$ and $q$ Matrices)
 
-Standard QP solvers like OSQP require the problem to be cast into a single, massive quadratic form over the entire decision vector $z$:
+Standard QP solvers like OSQP require the problem to be formulated with a quadratic form over the entire decision vector $z$:
 $$ \text{Minimize} \quad \frac{1}{2} z^T P z + q^T z $$
 $$ \text{where} \quad z = \begin{bmatrix} x_0 \\ \vdots \\ x_N \\ u_0 \\ \vdots \\ u_{N-1} \end{bmatrix} $$
 
@@ -88,14 +88,13 @@ $$ q = \begin{bmatrix} 0 \\ \vdots \\ 0 \end{bmatrix} $$
 
 ## 4. Constraints
 
-The solver must strictly obey two physical rules:
+The solver must respect three constraints:
 
-1.  **Dynamics (Equality Constraints):** The predicted states must follow the augmented physical transition matrices.
-    $$ x_{k+1} - A x_k - B u_k = 0 $$
-    The initial condition explicitly injects the previously executed physical rudder angle into the 4th state slot:
+1.  **Initial State Constraint (equality):** The first state of the horizon is fixed to the ship's current measured state, injecting the previously executed rudder angle into the 4th (augmented) slot:
     $$ x_0 = \begin{bmatrix} \psi_0 \\ r_0 \\ I_{\psi, 0} \\ \delta_{\text{prev}} \end{bmatrix} $$
 
-2.  **Actuator Limits (Inequality Constraints):** The physical rudder angle (State 4) cannot exceed the mechanical hardware limits of the vessel. We can also optionally apply inequality bounds to the rudder speed (Control $u_k$).
-    $$ -\delta_{\max} \leq x_{4,k} \leq \delta_{\max} $$
+2.  **Transition Constraint (equality):** Every following state must obey the augmented dynamics:
+    $$ x_{k+1} - A x_k - B u_k = 0 $$
 
-These are stacked vertically into large sparse matrices ($A_{\text{eq}}$, $A_{\text{ineq}}$) and passed to OSQP to bound the optimal trajectory search space.
+3.  **Rudder Angle Constraint (inequality):** The physical rudder angle (State 4) cannot exceed the vessel's mechanical limit. The rudder rate (control $u_k$) can optionally be bounded the same way:
+    $$ -\delta_{\max} \leq x_{4,k} \leq \delta_{\max} $$

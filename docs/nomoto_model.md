@@ -4,7 +4,7 @@ This document explains the first-order Nomoto model, which drives the ship kinem
 
 ## 1. Background
 
-Maneuvering a surface vessel is a hydrodynamic process with 3 degrees of freedom (surge, sway, and yaw) and non-linear damping.
+Maneuvering a surface vessel is a hydrodynamic process with 3 degrees of freedom (surge, sway, and yaw).
 
 In 1957, K. Nomoto showed that for course-keeping and steering at a roughly constant forward speed, these equations can be reduced to a linear transfer function relating the **rudder angle ($\delta$)** to the **yaw rate ($r$)**.
 
@@ -25,23 +25,35 @@ Where:
 The heading of the vessel, **$\psi(t)$**, is simply the integral of the yaw rate:
 $$ \dot{\psi}(t) = r(t) $$
 
-## 3. Understanding the Parameters ($K$ and $T$)
+## 3. Ship Dynamic Parameters
 
 The ship's dynamics are set by the two parameters $K$ and $T$. In this project they are hidden from the controller and randomized each episode, so the controller has to adapt rather than memorize one ship.
 
+Both parameters fall out of the ship's yaw equation of motion. For a simplified yaw-only model:
+$$ (I_z - N_{\dot r})\,\dot r = N_r\,r + N_\delta\,\delta $$
+Matching this to the Nomoto form $T\dot r + r = K\delta$ gives the expressions below.
+
 ### The Turning Gain ($K$)
-$K$ represents the steady-state turning ability of the vessel. 
+$K$ represents the turning ability of the vessel. 
 If the rudder is held at a constant angle $\delta_{ss}$, the yaw acceleration eventually becomes zero ($\dot{r} = 0$). The equation simplifies to:
 $$ r_{ss} = K \delta_{ss} $$
 
-A high $K$ value means the ship is highly responsive to the rudder and will turn very sharply (e.g., a small patrol boat). A low $K$ value means the ship resists turning even at maximum rudder deflection (e.g., a directionally stable cargo ship).
+From the yaw equation of motion, $K$ is the rudder's yaw moment over the yaw damping:
+$$ K = \frac{N_\delta}{-N_r} $$
+where $N_\delta$ is the yaw moment produced per unit rudder angle. In non-dimensional form it scales with ship length $L$ and forward speed $U$ as:
+$$ K = K'\,\frac{U}{L} $$
 
-### The Time Constant ($T$)
-$T$ represents the rotational inertia (or "sluggishness") of the vessel. It dictates the transient response of the ship—how long it takes to reach that steady-state turning speed $r_{ss}$.
+A high $K$ value means the ship is highly responsive to the rudder and will turn very sharply. A low $K$ value means the ship resists turning even at maximum rudder deflection.
 
-Physically, if the rudder is instantly deflected, it takes $T$ seconds for the ship's yaw rate to reach roughly $63.2\%$ of its final steady-state yaw rate.
+### Rotational Inertia ($T$)
+$T$ measures the vessel's rotational inertia. It sets how quickly the ship responds to the rudder. Which indicates how long the yaw rate takes to build up to its steady-state value $r_{ss}$.
 
-A massive oil tanker with a huge mass and immense hydrodynamic added-mass will have a very large $T$ (e.g., 20+ seconds), meaning it takes a long time to start turning, and a long time to stop turning once the rudder is centered.
+From the same yaw equation of motion, $T$ is the ship's effective rotational inertia over its yaw damping:
+$$ T = \frac{I_z - N_{\dot r}}{-N_r} $$
+where $I_z - N_{\dot r}$ is the hull inertia plus hydrodynamic added inertia. In non-dimensional form it scales with ship length $L$ and forward speed $U$ as:
+$$ T = T'\,\frac{L}{U} $$
+
+A high $T$ value means the ship is sluggish — a massive oil tanker takes a long time to start turning, and a long time to stop once the rudder is centered. A low $T$ value means the ship is nimble — a light patrol boat reaches its steady-state turn rate almost immediately.
 
 ## 4. Discrete Time Integration (Euler Method)
 
@@ -54,4 +66,4 @@ $$ r(t+1) = r(t) + \dot{r}(t) \cdot dt $$
 To find the new heading:
 $$ \psi(t+1) = \psi(t) + r(t+1) \cdot dt $$
 
-This discrete formulation forms the mathematical baseline of the `NomotoEnv.step()` function and the discrete state-space transition matrices used in the MPC baseline.
+This discrete formulation forms the mathematical baseline of the `NomotoEnv` function and the discrete state-space transition matrices used in the MPC baseline.
