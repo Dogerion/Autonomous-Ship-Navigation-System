@@ -1,5 +1,4 @@
 # RNN PPO hyperparameters training settings
-model_name: ppo_vessel      # Base filename for saved models/checkpoints
 learning_rate: 0.0003
 n_steps: 2048               # Rollout length per env (~128 episodes/rollout at max_steps=16)
 batch_size: 64             # Must divide n_steps * n_envs (2048 % 64 == 0)

@@ -224,7 +224,9 @@ class MPCManager(BaseManager):
         # Instantiate the mathematical OSQP MPC Solver wrapper
         self.mpc_solver = MPC(self.cfg.env, self.cfg.rl.mpc)
 
-    def load_model(self, path):
+    def load_model(self, path=None):
+        if path is None:
+            path = self.get_model_path()
         if self.env is None:
             self._create_env(n_envs=1)
         self.build_model()
@@ -232,9 +234,9 @@ class MPCManager(BaseManager):
         self.sysid_net.load_state_dict(torch.load(f"{path}.pth", weights_only=True))
 
     def save_model(self):
-        candidate_path = self.get_save_path(extension=".pth")
-        torch.save(self.sysid_net.state_dict(), f"{candidate_path}.pth")
-        print(f"SysID Neural Network saved successfully to: {candidate_path}.pth")
+        save_path = self.get_model_path()
+        torch.save(self.sysid_net.state_dict(), f"{save_path}.pth")
+        print(f"SysID Neural Network saved successfully to: {save_path}.pth")
 
     def train(self, save=True):
         if not hasattr(self, 'sysid_net'):
@@ -301,70 +303,92 @@ class MPCManager(BaseManager):
         if save:
             self.save_model()
 
+    def _rollout_episode(self):
+        """Run one closed-loop episode (GRU estimates K/T, MPC solves), returning its trajectory."""
+        if not hasattr(self, 'sysid_net'):
+            raise ValueError("SysID Model not loaded! Call load_model() first.")
+
+        obs = self.env.reset()
+        history_buffer = []
+        history_len = self.cfg.rl.sysid.history_length
+        traj = []
+        K_true = T_true = None
+
+        while True:
+            # Record the state the ship is currently in (before applying this step's action).
+            step_rec = {
+                "psi": float(obs[0][0]),
+                "r": float(obs[0][1]),
+                "delta": float(obs[0][2]),
+                "integral_psi": float(obs[0][3]),
+            }
+
+            # 1. Fill history buffer (Zero-padding if episode just started)
+            current_r = obs[0][1]
+            current_delta = obs[0][2]
+            history_buffer.append([current_r, current_delta])
+            if len(history_buffer) > history_len:
+                history_buffer.pop(0)
+
+            pad_len = history_len - len(history_buffer)
+            padded_history = [[0.0, 0.0]] * pad_len + history_buffer
+
+            # 2. Predict K and T
+            with torch.no_grad():
+                hist_tensor = torch.tensor([padded_history], dtype=torch.float32)
+                predictions = self.sysid_net(hist_tensor)
+                K_hat, T_hat = predictions[0].numpy()
+
+            # 3. Formulate State and Solve MPC
+            # OSQP state: [psi, r, integral_psi]
+            state_vec = np.array([obs[0][0], obs[0][1], obs[0][3]])
+
+            # u_prev is the current physical rudder angle (obs[0][2])
+            u_prev = obs[0][2]
+
+            optimal_action_rad = self.mpc_solver.solve(state_vec, u_prev, K_hat, T_hat)
+
+            # If solver failed to find solution, take 0 action to coast safely
+            if optimal_action_rad is None:
+                optimal_action_rad = 0.0
+
+            # 4. Map physical radians back to [-1, 1] normalized action space for the Gym env
+            normalized_action = optimal_action_rad / self.cfg.env.bound_rudder_angle_rad
+            normalized_action = np.clip(normalized_action, -1.0, 1.0)
+
+            # 5. Step Environment
+            # SB3 vectorized env step expects action shape to be [batch, action_dim], i.e., [[action_val]]
+            action_to_step = np.array([[normalized_action]])
+            obs, reward, done, info = self.env.step(action_to_step)
+
+            step_rec["reward"] = float(reward[0])
+            if K_true is None:
+                K_true, T_true = float(info[0]["K"]), float(info[0]["T"])
+            traj.append(step_rec)
+
+            if done[0]:
+                break
+
+        for rec in traj:
+            rec["K"], rec["T"] = K_true, T_true
+        return traj
+
     def evaluate(self, n_episodes=None, render=False):
         if not hasattr(self, 'sysid_net'):
             raise ValueError("SysID Model not loaded! Call load_model() first.")
-            
+
         episodes_to_run = (
             n_episodes
             if n_episodes is not None
             else self.cfg.rl.eval.get("n_eval_episodes", 10)
         )
-            
+
         print(f"Evaluating SysID+MPC over {episodes_to_run} episodes...")
-        total_rewards = []
-        
-        for ep in range(episodes_to_run):
-            obs = self.env.reset()
-            ep_reward = 0.0
-            history_buffer = []
-            history_len = self.cfg.rl.sysid.history_length
-            
-            while True:
-                # 1. Fill history buffer (Zero-padding if episode just started)
-                current_r = obs[0][1]
-                current_delta = obs[0][2]
-                history_buffer.append([current_r, current_delta])
-                if len(history_buffer) > history_len:
-                    history_buffer.pop(0)
-                    
-                pad_len = history_len - len(history_buffer)
-                padded_history = [[0.0, 0.0]] * pad_len + history_buffer
-                
-                # 2. Predict K and T
-                with torch.no_grad():
-                    hist_tensor = torch.tensor([padded_history], dtype=torch.float32)
-                    predictions = self.sysid_net(hist_tensor)
-                    K_hat, T_hat = predictions[0].numpy()
-                
-                # 3. Formulate State and Solve MPC
-                # OSQP state: [psi, r, integral_psi]
-                state_vec = np.array([obs[0][0], obs[0][1], obs[0][3]])
-                
-                # u_prev is the current physical rudder angle (obs[0][2])
-                u_prev = obs[0][2]
-                
-                optimal_action_rad = self.mpc_solver.solve(state_vec, u_prev, K_hat, T_hat)
-                
-                # If solver failed to find solution, take 0 action to coast safely
-                if optimal_action_rad is None:
-                    optimal_action_rad = 0.0
-                    
-                # 4. Map physical radians back to [-1, 1] normalized action space for the Gym env
-                normalized_action = optimal_action_rad / self.cfg.env.bound_rudder_angle_rad
-                normalized_action = np.clip(normalized_action, -1.0, 1.0)
-                
-                # 5. Step Environment
-                # SB3 vectorized env step expects action shape to be [batch, action_dim], i.e., [[action_val]]
-                action_to_step = np.array([[normalized_action]])
-                obs, reward, done, info = self.env.step(action_to_step)
-                ep_reward += reward[0]
-                
-                if done[0]:
-                    break
-                    
-            total_rewards.append(ep_reward)
-            
+        total_rewards = [
+            sum(step["reward"] for step in self._rollout_episode())
+            for _ in range(episodes_to_run)
+        ]
+
         mean_reward = np.mean(total_rewards)
         std_reward = np.std(total_rewards)
         print(f"Evaluation Results: Mean Reward = {mean_reward:.2f}, Standard Deviation = {std_reward:.2f}")

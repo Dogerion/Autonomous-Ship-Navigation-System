@@ -1,5 +1,4 @@
 # Two-Stage System ID Neural Network & Integral MPC Configs
-model_name: sysid_mpc_vessel   # Base filename for saved models/checkpoints
 
 # System Identification Neural Network (PyTorch)
 sysid:

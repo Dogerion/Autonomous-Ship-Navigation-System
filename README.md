@@ -68,7 +68,7 @@ where the control input $v_k = \Delta\delta_k$ is the *change* in rudder angle. 
 │       ├── ppo_manager.py  # RecurrentPPO agent
 │       └── mpc_manager.py  # SysID network + OSQP MPC
 ├── models/                 # Saved weights (.zip / .pth) — generated
-└── runs/                   # TensorBoard logs — generated
+└── tensorboard_runs/       # TensorBoard logs — generated
 ```
 
 ---
@@ -90,19 +90,21 @@ source .venv/bin/activate
 
 Run training, evaluation, or tuning from the command line.
 
-> The agent is chosen by the `rl=` config group (`ppo` or `sysid_mpc`) — there is no separate `agent_type` flag.
->
-> Any config value can be overridden with Hydra dot-notation, e.g.
-> `python main.py rl=ppo mode=train rl.total_timesteps=500000 seed=7`.
+> - **`rl=`** chooses the agent (`ppo` or `sysid_mpc`) — there is no separate `agent_type` flag.
+> - **`model_name=`** identifies a specific trained model. It is the base name used to *save* the model
+>   during training and to *load* it for evaluation/visualization (`models/{project_name}/{model_name}`).
+>   Give each experiment its own name.
+> - Any config value can be overridden with Hydra dot-notation, e.g.
+>   `python main.py rl=ppo mode=train rl.total_timesteps=500000 seed=7`.
 
 ### RecurrentPPO (Reinforcement Learning)
 
 ```bash
-# Train
-python main.py rl=ppo mode=train
+# Train (saves to models/<project>/coastal_run)
+python main.py rl=ppo mode=train model_name=coastal_run
 
-# Evaluate a saved model
-python main.py rl=ppo mode=eval load_path=models/autonomous-vessel-rl/ppo_vessel
+# Evaluate that model
+python main.py rl=ppo mode=eval model_name=coastal_run
 
 # Tune hyperparameters with Optuna
 python main.py rl=ppo mode=optimize
@@ -112,20 +114,38 @@ python main.py rl=ppo mode=optimize
 
 ```bash
 # Train the SysID network (collects random-rudder response data, then fits the GRU)
-python main.py rl=sysid_mpc mode=train
+python main.py rl=sysid_mpc mode=train model_name=coastal_run
 
 # Evaluate the closed loop (GRU estimates K/T online, MPC solves for the rudder each step)
-python main.py rl=sysid_mpc mode=eval load_path=models/autonomous-vessel-rl/sysid_mpc_vessel
+python main.py rl=sysid_mpc mode=eval model_name=coastal_run
 ```
+
+### Visualize a course correction
+
+`mode=visualize` runs one episode of a trained controller and animates it live — a top-down
+view of the ship steering back onto its target course, alongside synced heading-error, rudder,
+and yaw-rate plots.
+
+```bash
+python main.py rl=ppo        mode=visualize model_name=coastal_run env.max_steps=120
+python main.py rl=sysid_mpc  mode=visualize model_name=coastal_run env.max_steps=120
+```
+
+Each run also saves the animation as a GIF to `visuals/{project_name}/{model_name}/`.
+
+> Raise `env.max_steps` (default 16) for a longer, smoother demo. The live window needs a display —
+> WSLg provides one on Windows 11; otherwise run an X server. The 2D path assumes a constant forward
+> speed for illustration (the model itself only tracks heading), so the ship straightens to run
+> *parallel* to the target course rather than rejoining it.
 
 ---
 
 ## Monitoring
 
-PPO training logs the standard Stable-Baselines3 scalars to **TensorBoard** under `runs/<project_name>/` — episode reward and length, policy/value losses, and success rate when available.
+PPO training logs the standard Stable-Baselines3 scalars to **TensorBoard** under `tensorboard_runs/<project_name>/` — episode reward and length, policy/value losses, and success rate when available.
 
 ```bash
-tensorboard --logdir ./runs/
+tensorboard --logdir ./tensorboard_runs/
 # then open http://localhost:6006
 ```
 

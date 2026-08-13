@@ -1,3 +1,4 @@
+import numpy as np
 import optuna
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -30,7 +31,9 @@ class PPOManager(BaseManager):
             seed=self.algo_seed
         )
 
-    def load_model(self, path):
+    def load_model(self, path=None):
+        if path is None:
+            path = self.get_model_path()
         if self.env is None:
             self._create_env()
         print(f"Loading PPO model from {path}...")
@@ -40,9 +43,9 @@ class PPOManager(BaseManager):
         if self.model is None:
             raise ValueError("No model is initialized to save!")
             
-        candidate_path = self.get_save_path(extension=".zip")
-        self.model.save(candidate_path)
-        print(f"PPO Model saved successfully to: {candidate_path}.zip")
+        save_path = self.get_model_path()
+        self.model.save(save_path)
+        print(f"PPO Model saved successfully to: {save_path}.zip")
 
     def train(self, save=True):
         if self.model is None:
@@ -74,6 +77,44 @@ class PPOManager(BaseManager):
         )
         print(f"Evaluation Results: Mean Reward = {mean_reward:.2f}, Standard Deviation = {std_reward:.2f}")
         return mean_reward
+
+    def _rollout_episode(self):
+        """Run one deterministic episode, threading the LSTM state, returning its trajectory."""
+        if self.model is None:
+            raise ValueError("Model not loaded! Call load_model() first.")
+
+        obs = self.env.reset()
+        lstm_states = None
+        episode_starts = np.ones((self.env.num_envs,), dtype=bool)
+        traj = []
+        K_true = T_true = None
+
+        while True:
+            # Record the state the ship is currently in (before applying this step's action).
+            step_rec = {
+                "psi": float(obs[0][0]),
+                "r": float(obs[0][1]),
+                "delta": float(obs[0][2]),
+                "integral_psi": float(obs[0][3]),
+            }
+
+            action, lstm_states = self.model.predict(
+                obs, state=lstm_states, episode_start=episode_starts, deterministic=True
+            )
+            obs, reward, done, info = self.env.step(action)
+            episode_starts = done
+
+            step_rec["reward"] = float(reward[0])
+            if K_true is None:
+                K_true, T_true = float(info[0]["K"]), float(info[0]["T"])
+            traj.append(step_rec)
+
+            if done[0]:
+                break
+
+        for rec in traj:
+            rec["K"], rec["T"] = K_true, T_true
+        return traj
 
     def optimize_hyperparameters(self):
         n_trials = self.cfg.rl.hpo.n_trials

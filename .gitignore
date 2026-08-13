@@ -11,10 +11,13 @@ outputs/
 multirun/
 
 # TensorBoard logging output
-runs/
+tensorboard_runs/
 
 # Model checkpoints and weights
 models/
+
+# Saved episode visualizations
+visuals/
 
 # Virtual environments
 .venv
@@ -30,3 +33,6 @@ Thumbs.db
 # Research papers (Need license)
 research/*.pdf
 research/*.Identifier
+
+# Claude AI files
+.claude/

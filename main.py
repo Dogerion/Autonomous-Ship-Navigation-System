@@ -8,8 +8,9 @@ def main(cfg: DictConfig):
     print("=========================================")
     print("MARIN Hybrid Navigation System Loaded")
     print("=========================================")
+    agent_type = HydraConfig.get().runtime.choices.rl
     print(f"Project Name: {cfg.project_name}")
-    print(f"Agent Type: {HydraConfig.get().runtime.choices.rl}")
+    print(f"Agent Type: {agent_type}")
     print(f"Mode: {cfg.mode}")
     print("=========================================")
     
@@ -20,12 +21,13 @@ def main(cfg: DictConfig):
         manager.build_model()
         manager.train()
     elif cfg.mode == "eval":
-        if not cfg.load_path:
-            raise ValueError("Must provide 'load_path' in config to run evaluation mode.")
-        manager.load_model(cfg.load_path)
+        manager.load_model()
         manager.evaluate()
     elif cfg.mode == "optimize":
         manager.optimize_hyperparameters()
+    elif cfg.mode == "visualize":
+        manager.load_model()
+        manager.visualize(agent_name=agent_type)
     else:
         raise ValueError(f"Unknown mode: {cfg.mode}")
 

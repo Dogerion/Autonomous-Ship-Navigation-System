@@ -5,6 +5,5 @@ defaults:
 
 project_name: "autonomous-vessel-rl"                      # Name for the project, used for saving models and logs
 seed: 42                                                  # Random seed for reproducibility
-mode: "train"                                             # Choose between: train, eval, optimize
-load_path: "models/autonomous-vessel-rl/ppo_vessel"  # If mode="eval", path to the .zip model
-model_name: ${rl.model_name}                             # Per-agent model name, defined in the selected rl config
+mode: "train"                                             # Choose between: train, eval, optimize, visualize
+model_name: "vessel_v1"                                   # Identifier of the specific trained model; used to save & load it
