@@ -4,15 +4,24 @@ import optuna
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.vec_env import VecNormalize
 from src.agents.base_manager import BaseManager
 
 class PPOManager(BaseManager):
     """
     Manager for the RecurrentPPO agent.
     """
+    def get_vecnormalize_path(self):
+        """Path of the running observation-normalization statistics saved next to the model."""
+        return self.get_model_path() + "_vecnormalize.pkl"
+
     def build_model(self, verbose=None):
         if self.env is None:
             self._create_env()
+            # Normalize observations only. The heading-error integral is unbounded (reaches ~hundreds)
+            # while psi/r are near unit scale, so a running mean/std keeps every input on a comparable
+            # scale for the LSTM. Rewards are left raw so eval numbers stay in physical units.
+            self.env = VecNormalize(self.env, norm_obs=True, norm_reward=False, clip_obs=10.0)
 
         # Determine verbosity (allow override during hyperparameter optimization)
         model_verbose = verbose if verbose is not None else self.cfg.rl.get("verbose", 1)
@@ -37,15 +46,29 @@ class PPOManager(BaseManager):
             path = self.get_model_path()
         if self.env is None:
             self._create_env()
+
+        # Restore the observation-normalization stats the model was trained with, and freeze them
+        # (training=False) so evaluation/visualization don't drift the running statistics.
+        stats_path = self.get_vecnormalize_path()
+        if os.path.exists(stats_path):
+            self.env = VecNormalize.load(stats_path, self.env)
+            self.env.training = False
+            self.env.norm_reward = False
+        else:
+            print(f"Warning: no normalization stats at {stats_path}; "
+                  "observations will NOT be normalized (retrain to generate them).")
+
         print(f"Loading PPO model from {path}...")
         self.model = RecurrentPPO.load(path, env=self.env)
 
     def save_model(self):
         if self.model is None:
             raise ValueError("No model is initialized to save!")
-            
+
         save_path = self.get_model_path()
         self.model.save(save_path)
+        if isinstance(self.env, VecNormalize):
+            self.env.save(self.get_vecnormalize_path())
         print(f"PPO Model saved successfully to: {save_path}.zip")
 
     def train(self, save=True):
@@ -77,7 +100,12 @@ class PPOManager(BaseManager):
             if n_episodes is not None
             else self.cfg.rl.eval.get("n_eval_episodes", 10)
         )
-            
+
+        # Freeze the normalization stats so evaluation uses fixed statistics and reports raw rewards.
+        if isinstance(self.env, VecNormalize):
+            self.env.training = False
+            self.env.norm_reward = False
+
         print(f"Evaluating PPO model over {episodes_to_run} episodes...")
         mean_reward, std_reward = evaluate_policy(
             self.model, self.env, n_eval_episodes=episodes_to_run, return_episode_rewards=False
@@ -91,18 +119,23 @@ class PPOManager(BaseManager):
             raise ValueError("Model not loaded! Call load_model() first.")
 
         obs = self.env.reset()
+        normalized = isinstance(self.env, VecNormalize)
+        if normalized:
+            self.env.training = False
         lstm_states = None
         episode_starts = np.ones((self.env.num_envs,), dtype=bool)
         traj = []
         K_true = T_true = None
 
         while True:
-            # Record the state the ship is currently in (before applying this step's action).
+            # Record the ship's *physical* state (VecNormalize returns normalized obs, so pull the
+            # original units for the plots; predict() still runs on the normalized obs below).
+            phys = self.env.get_original_obs() if normalized else obs
             step_rec = {
-                "psi": float(obs[0][0]),
-                "r": float(obs[0][1]),
-                "delta": float(obs[0][2]),
-                "integral_psi": float(obs[0][3]),
+                "psi": float(phys[0][0]),
+                "r": float(phys[0][1]),
+                "delta": float(phys[0][2]),
+                "integral_psi": float(phys[0][3]),
             }
 
             action, lstm_states = self.model.predict(

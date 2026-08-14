@@ -1,21 +1,21 @@
 # Autonomous Surface Vessel Course-Keeping
 
-A research project for ship course-keeping: holding a target heading under random wave noise and unknown, varying ship dynamics.
+A research project for ship course-keeping. It aims to hold a target heading under random wave noise and unknown, varying ship dynamics.
 
 ![Course-correction demo](visuals/example.gif)
 
-It uses the **Strategy pattern** to compare two controllers on the same task:
+It uses the 2 approahces to compare on the same task:
 
-1. **Reinforcement Learning (PPO)** — a `RecurrentPPO` agent with an LSTM policy. It learns to adapt to the ship's dynamics from the history of its observations, without being told the ship's parameters.
-2. **System Identification + MPC** — a two-stage controller. A GRU network (`SysIDNet`) estimates the ship's parameters online, and a Model Predictive Controller (solved with `OSQP`) computes the rudder command.
+1. **Reinforcement Learning (PPO):** It is a `RecurrentPPO` agent with an LSTM policy. It learns to adapt to the ship's dynamics from the history of its observations, without being told the ship's parameters.
+2. **System Identification + MPC:** It is a two stage controller. A GRU network (`SysIDNet`) estimates the ship's parameters online, and a Model Predictive Controller (solved with `OSQP`) computes the rudder command.
 
 ---
 
 ## How It Works
 
-### 1. Environment (Gymnasium)
+### 1. Nomoto Environment (Gymnasium)
 
-The ship follows the discrete-time **first-order Nomoto model**:
+The ship follows the discrete time **first order Nomoto model**:
 
 $$ T \dot{r} + r = K \delta $$
 
@@ -31,16 +31,14 @@ $$ R = -\left( w_1\,\psi^2 + w_2\,\delta^2 + w_3\,\Delta\delta^2 \right) $$
 
 ### 2. MPC Formulation
 
-The MPC uses an augmented state so that the rudder-rate penalty ($\Delta\delta^2$) can be written as a plain control cost instead of a cross-term:
+The MPC plans a short sequence of rudder moves that steer the heading back to target while respecting the rudder limits, and re-solves every step (receding horizon). It optimizes over the *change* in rudder rather than its absolute angle, which keeps the steering smooth and the underlying optimization fast to solve.
 
-$$ x_k = \begin{bmatrix} \psi_k \\ r_k \\ I_{\psi, k} \\ \delta_{k-1} \end{bmatrix}, \quad u_k = \begin{bmatrix} v_k \end{bmatrix} $$
-
-where the control input $v_k = \Delta\delta_k$ is the *change* in rudder angle. This keeps the QP Hessian $P$ block-diagonal and the linear cost vector $q$ exactly zero. The state-transition matrices $A$ and $B$ match the environment's integration steps exactly, so the controller's model agrees with the simulator.
+See [docs/mpc_formulation.md](./docs/mpc_formulation.md) for the full derivation.
 
 ### 3. Code Structure
 
 - Both controllers inherit from a shared `BaseManager` (`src/agents/`) that sets up the run/model directories and deterministic seeding.
-- **Seeding**: a single master seed feeds NumPy's `SeedSequence`, which produces independent seeds for the environment, model weights, and Optuna study — so runs are reproducible.
+- **Seeding**: a single master seed feeds NumPy's `SeedSequence`, which produces independent seeds for the environment, model weights, and Optuna study in order to make runs reproducible.
 - **Hyperparameter tuning**: an Optuna pipeline (TPE sampler) is available for PPO, searching over learning rate and discount factor by default.
 
 ---
@@ -99,7 +97,7 @@ Run training, evaluation, or tuning from the command line.
 > - Any config value can be overridden with Hydra dot-notation, e.g.
 >   `python main.py rl=ppo mode=train rl.total_timesteps=500000 seed=7`.
 
-### RecurrentPPO (Reinforcement Learning)
+### RecurrentPPO
 
 ```bash
 # Train (saves to models/<project>/coastal_run)
@@ -124,8 +122,8 @@ python main.py rl=sysid_mpc mode=eval model_name=coastal_run
 
 ### Visualize a course correction
 
-`mode=visualize` runs one episode of a trained controller and animates it live — a top-down
-view of the ship steering back onto its target course, alongside synced heading-error, rudder,
+`mode=visualize` runs one episode of a trained controller and animates a live, top-down
+view of the ship steering back onto its target course, alongside with its heading-error, rudder,
 and yaw-rate plots.
 
 ```bash
@@ -135,10 +133,7 @@ python main.py rl=sysid_mpc  mode=visualize model_name=coastal_run env.max_steps
 
 Each run also saves the animation as a GIF to `visuals/{project_name}/{model_name}/`.
 
-> Raise `env.max_steps` (default 16) for a longer, smoother demo. The live window needs a display —
-> WSLg provides one on Windows 11; otherwise run an X server. The 2D path assumes a constant forward
-> speed for illustration (the model itself only tracks heading), so the ship straightens to run
-> *parallel* to the target course rather than rejoining it.
+> The top-down path is illustrative: the Nomoto model only tracks heading, so the 2D position is reconstructed assuming a constant forward speed.
 
 ---
 

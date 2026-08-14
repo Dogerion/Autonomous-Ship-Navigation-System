@@ -6,7 +6,7 @@ from src.utils import agent_selecter
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     print("=========================================")
-    print("MARIN Hybrid Navigation System Loaded")
+    print("Course Keeping System Loaded")
     print("=========================================")
     agent_type = HydraConfig.get().runtime.choices.rl
     print(f"Project Name: {cfg.project_name}")

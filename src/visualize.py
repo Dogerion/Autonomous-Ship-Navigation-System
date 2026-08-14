@@ -82,7 +82,7 @@ def animate_trajectory(traj, *, dt, rudder_bound, agent_name,
                          width=0.008, label="ship heading")
     ax_map.legend(loc="upper right", fontsize=8)
 
-    # --- Right: time series ---
+    # Time Series Plot of the heading error, rudder command, and yaw rate.
     def _setup(ax, series, ylabel, color):
         ax.set_xlim(0, max(t[-1], dt))
         lo, hi = float(np.min(series)), float(np.max(series))
@@ -93,6 +93,7 @@ def animate_trajectory(traj, *, dt, rudder_bound, agent_name,
         (line,) = ax.plot([], [], color=color, lw=1.8)
         return line
 
+    # Setup the K/T prediction panels if requested.
     def _setup_pred(ax, pred, true_val, name, color):
         ax.set_xlim(0, max(t[-1], dt))
         vals = np.concatenate([pred, [true_val]])
@@ -105,7 +106,7 @@ def animate_trajectory(traj, *, dt, rudder_bound, agent_name,
         (line,) = ax.plot([], [], color=color, lw=1.8, label=f"predicted {name}")
         ax.legend(loc="best", fontsize=7)
         return line
-
+    
     ax_psi.axhline(0.0, color="k", lw=0.8, alpha=0.5)
     psi_line = _setup(ax_psi, psi, "heading err ψ (rad)", "tab:blue")
     del_line = _setup(ax_del, delta, "rudder δ (rad)", "tab:orange")

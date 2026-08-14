@@ -1,9 +1,9 @@
 defaults:
   - env: nomoto
-  - rl: sysid_mpc          # Agent to use: ppo, sysid_mpc (config files in conf/rl/)
+  - rl: ppo          # Agent to use: ppo, sysid_mpc (config files in conf/rl/)
   - _self_
 
 project_name: "autonomous-vessel-rl"                    # Name for the project, used for saving models and logs
 seed: 42                                                 # Random seed for reproducibility
-mode: "visualize"                                            # Choose between: train, eval, optimize, visualize
-model_name: "vessel_v1"                                 # Identifier of the specific trained model; used to save & load it
+mode: "train"                                            # Choose between: train, eval, optimize, visualize
+model_name: "vessel_v2"                                 # Identifier of the specific trained model; used to save & load it

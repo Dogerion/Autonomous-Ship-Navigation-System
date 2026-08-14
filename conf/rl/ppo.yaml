@@ -2,13 +2,13 @@
 
 learning_rate: 0.0003      # Adam step size for the policy and value networks
 n_steps: 2048              # Env steps collected per update (rollout-buffer size); ~20 episodes at max_steps=100
-batch_size: 64             # Minibatch size for the gradient updates; must divide n_steps * n_envs (2048 % 64 == 0)
-n_epochs: 10               # Number of optimization passes over each rollout buffer per update
+batch_size: 32             # Minibatch size for the gradient updates; must divide n_steps * n_envs (2048 % 32 == 0)
+n_epochs: 20               # Number of optimization passes over each rollout buffer per update
 gamma: 0.99                # Reward discount factor — how much future reward is valued vs immediate
 gae_lambda: 0.95           # GAE smoothing for advantage estimation (→1 lower bias/higher variance, →0 the reverse)
 clip_range: 0.2            # PPO clip limiting how far the policy may shift in a single update
 ent_coef: 0.0              # Entropy-bonus weight; >0 encourages exploration (0 = SB3 default, none)
-total_timesteps: 1000000   # Total env steps to train for (~488 updates at n_steps=2048)
+total_timesteps: 500000    # Total env steps to train for
 log_interval: 1            # Dump metrics to TensorBoard every N updates; keep <= total_timesteps / n_steps
 
 # Evaluation settings (mode=eval)
