@@ -17,11 +17,12 @@ class PPOManager(BaseManager):
 
     def build_model(self, verbose=None):
         if self.env is None:
-            self._create_env()
-            # Normalize observations only. The heading-error integral is unbounded (reaches ~hundreds)
-            # while psi/r are near unit scale, so a running mean/std keeps every input on a comparable
-            # scale for the LSTM. Rewards are left raw so eval numbers stay in physical units.
-            self.env = VecNormalize(self.env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+            # Create the environment with the specified number of parallel envs for batching.
+            self._create_env(n_envs=self.cfg.rl.get("n_envs", 1))
+
+            # Wrap the environment in VecNormalize to normalize observations and rewards.
+            self.env = VecNormalize(self.env, norm_obs=True, norm_reward=True,
+                                    clip_obs=10.0, gamma=self.cfg.rl.gamma)
 
         # Determine verbosity (allow override during hyperparameter optimization)
         model_verbose = verbose if verbose is not None else self.cfg.rl.get("verbose", 1)
@@ -60,6 +61,11 @@ class PPOManager(BaseManager):
 
         print(f"Loading PPO model from {path}...")
         self.model = RecurrentPPO.load(path, env=self.env)
+        # RecurrentPPO.load() re-seeds self.env from the *training-time* seed pickled into the
+        # checkpoint (via set_random_seed -> env.seed), clobbering the env_seed queued above from
+        # this run's cfg.seed. Re-apply the current run's seed so eval/visualize episodes actually
+        # vary with `seed=` instead of always replaying the training-time episode.
+        self.env.seed(self.env_seed)
 
     def save_model(self):
         if self.model is None:

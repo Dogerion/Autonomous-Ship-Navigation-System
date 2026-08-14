@@ -4,6 +4,6 @@ defaults:
   - _self_
 
 project_name: "autonomous-vessel-rl"                    # Name for the project, used for saving models and logs
-seed: 42                                                 # Random seed for reproducibility
-mode: "train"                                            # Choose between: train, eval, optimize, visualize
+seed: 3                                                 # Random seed for reproducibility
+mode: "visualize"                                            # Choose between: train, eval, optimize, visualize
 model_name: "vessel_v2"                                 # Identifier of the specific trained model; used to save & load it

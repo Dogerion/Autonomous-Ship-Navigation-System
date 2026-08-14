@@ -1,13 +1,17 @@
 # RecurrentPPO (LSTM policy) hyperparameters — used by src/agents/ppo_manager.py
 
 learning_rate: 0.0003      # Adam step size for the policy and value networks
-n_steps: 2048              # Env steps collected per update (rollout-buffer size); ~20 episodes at max_steps=100
-batch_size: 32             # Minibatch size for the gradient updates; must divide n_steps * n_envs (2048 % 32 == 0)
-n_epochs: 20               # Number of optimization passes over each rollout buffer per update
+n_envs: 8                  # Parallel environments collected per rollout step -- the main wall-clock
+                            # lever (batches the LSTM forward pass across envs); also adds more
+                            # diverse ships (K/T) per update. Raise if CPU headroom allows.
+n_steps: 2048              # Env steps collected per update PER ENV (rollout-buffer size = n_steps * n_envs)
+batch_size: 32             # Minibatch size for the gradient updates; must divide n_steps * n_envs (2048*8 % 32 == 0)
+n_epochs: 10               # Number of optimization passes over each rollout buffer per update
 gamma: 0.99                # Reward discount factor — how much future reward is valued vs immediate
 gae_lambda: 0.95           # GAE smoothing for advantage estimation (→1 lower bias/higher variance, →0 the reverse)
 clip_range: 0.2            # PPO clip limiting how far the policy may shift in a single update
-ent_coef: 0.0              # Entropy-bonus weight; >0 encourages exploration (0 = SB3 default, none)
+ent_coef: 0.001            # Entropy-bonus weight; keeps action std from collapsing too early so the
+                            # policy keeps exploring past a mediocre local optimum (0 = no bonus)
 total_timesteps: 500000    # Total env steps to train for
 log_interval: 1            # Dump metrics to TensorBoard every N updates; keep <= total_timesteps / n_steps
 
