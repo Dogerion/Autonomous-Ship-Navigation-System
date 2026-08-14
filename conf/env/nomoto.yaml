@@ -1,20 +1,20 @@
 # Nomoto Model & Environment Configuration
-T_range: [10.0, 20.0]             # Time constant range for uniform sampling (seconds)
-K_range: [0.1, 0.5]               # Ship gain range for uniform sampling (1/seconds)
-dt: 1                             # Time step (seconds)
-max_steps: 16                     # Maximum steps until ship attributes and course changes per episode
-bound_rudder_angle_rad: 0.610865  # Rudder Angle Change limit (radians, approx 35 degrees)
-init_heading_error_rad: 3.141593  # Initial heading error limit (radians, approx 180 degrees)
+T_range: [5.0, 30.0]              # Ship time-constant (inertia) sampling range; wider = more diverse ships (nimble → sluggish)
+K_range: [0.1, 0.5]               # Ship turning-gain sampling range (1/seconds); lower = weaker turning authority
+dt: 1                             # Simulation time step (seconds per step)
+max_steps: 100                    # Max steps per episode before truncation; long enough for sluggish ships to turn onto course and hold
+bound_rudder_angle_rad: 0.610865  # Max rudder deflection (radians, ~35 degrees)
+init_heading_error_rad: 3.141593  # Initial heading error sampled in +/- this range (radians, ~180 degrees)
 
 # Wave disturbance parameters
-yaw_rate_noise_flag: True         # Enable/disable dynamic wave disturbance noise
-yaw_rate_noise_std: 0.01          # Dynamic wave disturbance noise (rad/s)
+yaw_rate_noise_flag: True         # Enable/disable the wave disturbance noise
+yaw_rate_noise_std: 0.02          # Std of zero-mean Gaussian noise added to yaw rate each step (rad/s)
 
 # Early stopping (success) criteria
-bound_trial_rad: 0.034907         # Stable heading error tolerance (radians, approx 2 degrees)
-step_trial: 1                     # Number of consecutive steps required within tolerance to succeed
+bound_trial_rad: 0.034907         # Heading-error tolerance counted as "on course" (radians, ~2 degrees)
+step_trial: 10                    # Consecutive on-course steps required to solve the episode (must HOLD course, not just touch it)
 
 # Reward Formulation weights: R = -(w1*psi^2 + w2*delta^2 + w3*delta_dot^2)
-w1_heading_error: 1.0             # Penalize course deviation
-w2_rudder_angle: 0.1              # Penalize mechanical rudder angle
-w3_rudder_rate: 0.5               # Penalize rate of change (wear and tear)
+w1_heading_error: 1.0             # Penalize heading (course) deviation
+w2_rudder_angle: 0.1              # Penalize mechanical rudder angle (control effort)
+w3_rudder_rate: 0.5               # Penalize rudder rate of change (actuator wear)

@@ -1,18 +1,19 @@
-# Two-Stage System ID Neural Network & Integral MPC Configs
+# Two-stage controller — GRU System-ID network + receding-horizon MPC
+# Used by src/agents/mpc_manager.py
 
-# System Identification Neural Network (PyTorch)
+# System Identification Neural Network
 sysid:
-  history_length: 10         # Length of rolling history window of [r, delta] fed to the NN
-  hidden_sizes: [32, 16]     # Hidden sizes for GRU and subsequent Linear layers [gru_size, linear_size]
-  learning_rate: 0.001       # Supervised learning optimizer rate
-  epochs: 50                 # Number of training epochs on the collected dataset
-  log_interval: 10           # Print MSE loss every N epochs during SysID training
-  excitation_steps: 10000    # Random-excitation steps (uniform random rudder) to collect training data
+  history_length: 10         # Length of the rolling [yaw_rate, rudder] window fed to the GRU
+  hidden_sizes: [32, 16]     # [GRU hidden size, following linear layer size] of SysIDNet
+  learning_rate: 0.001       # Adam step size for supervised training of the GRU
+  epochs: 50                 # Number of passes over the collected dataset
+  log_interval: 10           # Print MSE loss to console every N epochs (TensorBoard logs every epoch)
+  excitation_steps: 50000    # Random-rudder env steps used to collect (history -> K,T) training samples; more steps = broader coverage of the randomized K/T space
 
-# Receding Horizon MPC
+# Model Predictive Controller
 mpc:
-  prediction_horizon: 20     # N steps looked ahead by the controller
+  prediction_horizon: 20     # Number of steps the controller optimizes ahead on each solve (N)
 
-# Evaluation Settings (Matches PPOManager format)
+# Evaluation settings (mode=eval)
 eval:
-  n_eval_episodes: 20
+  n_eval_episodes: 20        # Episodes averaged to report mean/std reward

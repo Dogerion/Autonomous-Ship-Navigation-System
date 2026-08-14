@@ -1,24 +1,25 @@
-# RNN PPO hyperparameters training settings
-learning_rate: 0.0003
-n_steps: 2048               # Rollout length per env (~128 episodes/rollout at max_steps=16)
-batch_size: 64             # Must divide n_steps * n_envs (2048 % 64 == 0)
-n_epochs: 10               # Optimization passes over each rollout buffer
-gamma: 0.99
-gae_lambda: 0.95
-clip_range: 0.2
-ent_coef: 0.0
-total_timesteps: 1000000   # ~488 PPO updates (1e6 / 2048)
-log_interval: 1            # SB3 dumps to TensorBoard every `log_interval` iterations; keep <= total_timesteps/n_steps
+# RecurrentPPO (LSTM policy) hyperparameters — used by src/agents/ppo_manager.py
 
-# Evaluation settings
+learning_rate: 0.0003      # Adam step size for the policy and value networks
+n_steps: 2048              # Env steps collected per update (rollout-buffer size); ~20 episodes at max_steps=100
+batch_size: 64             # Minibatch size for the gradient updates; must divide n_steps * n_envs (2048 % 64 == 0)
+n_epochs: 10               # Number of optimization passes over each rollout buffer per update
+gamma: 0.99                # Reward discount factor — how much future reward is valued vs immediate
+gae_lambda: 0.95           # GAE smoothing for advantage estimation (→1 lower bias/higher variance, →0 the reverse)
+clip_range: 0.2            # PPO clip limiting how far the policy may shift in a single update
+ent_coef: 0.0              # Entropy-bonus weight; >0 encourages exploration (0 = SB3 default, none)
+total_timesteps: 1000000   # Total env steps to train for (~488 updates at n_steps=2048)
+log_interval: 1            # Dump metrics to TensorBoard every N updates; keep <= total_timesteps / n_steps
+
+# Evaluation settings (mode=eval)
 eval:
-  n_eval_episodes: 20
+  n_eval_episodes: 20      # Episodes averaged to report mean/std reward
 
-# Hyperparameter Optimization Parameters
+# Optuna hyperparameter search (mode=optimize)
 hpo:
-  n_trials: 20              # Number of Optuna trials
-  n_eval_episodes: 10       # Number of episodes to run during evaluation checks inside HPO sweeps
-  learning_rate_min: 1e-5
-  learning_rate_max: 1e-3
-  gamma_min: 0.90
-  gamma_max: 0.9999
+  n_trials: 20             # Number of hyperparameter sets to sample and evaluate
+  n_eval_episodes: 10      # Episodes used to score each trial
+  learning_rate_min: 1e-5  # Lower bound of the learning-rate search (log-uniform)
+  learning_rate_max: 1e-3  # Upper bound of the learning-rate search (log-uniform)
+  gamma_min: 0.90          # Lower bound of the discount-factor search
+  gamma_max: 0.9999        # Upper bound of the discount-factor search

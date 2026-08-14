@@ -27,7 +27,7 @@ def main(cfg: DictConfig):
         manager.optimize_hyperparameters()
     elif cfg.mode == "visualize":
         manager.load_model()
-        manager.visualize(agent_name=agent_type)
+        manager.visualize(agent_name=cfg.model_name, sysid=(agent_type == "sysid_mpc"))
     else:
         raise ValueError(f"Unknown mode: {cfg.mode}")
 

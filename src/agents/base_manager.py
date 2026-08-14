@@ -71,7 +71,7 @@ class BaseManager:
         """
         raise NotImplementedError
 
-    def visualize(self, agent_name, save=True, show=True):
+    def visualize(self, agent_name, sysid=False, save=True, show=True):
         """
         Animate one episode: a 2D top-down boat path plus synced psi/delta/r time-series.
         Requires a loaded model (call load_model first). When `save` is True, the animation is
@@ -79,6 +79,7 @@ class BaseManager:
 
         Args:
             agent_name: label for the title/filename (e.g. "ppo", "sysid_mpc").
+            sysid: if True, also plot the SysID network's predicted K/T vs the true K/T.
         """
         traj = self._rollout_episode()
 
@@ -96,6 +97,7 @@ class BaseManager:
             agent_name=agent_name,
             save_path=save_path,
             show=show,
+            sysid=sysid,
         )
 
         if save_path is not None:

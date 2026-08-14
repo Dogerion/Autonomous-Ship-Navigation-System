@@ -1,7 +1,9 @@
+import os
 import numpy as np
 import optuna
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.logger import configure
 from src.agents.base_manager import BaseManager
 
 class PPOManager(BaseManager):
@@ -26,7 +28,6 @@ class PPOManager(BaseManager):
             gae_lambda=self.cfg.rl.gae_lambda,
             clip_range=self.cfg.rl.clip_range,
             ent_coef=self.cfg.rl.ent_coef,
-            tensorboard_log=self.run_dir,
             verbose=model_verbose,
             seed=self.algo_seed
         )
@@ -50,14 +51,20 @@ class PPOManager(BaseManager):
     def train(self, save=True):
         if self.model is None:
             raise ValueError("Model not built! Call build_model() first.")
-            
+
+        # Log straight to tensorboard_runs/{project}/{model_name} by setting a custom logger.
+        # (SB3's default tb_log_name auto-appends a "_1", "_2", ... run id; a custom logger avoids it.)
+        # Keep stdout output only when verbose, so HPO trials (verbose=0) stay quiet.
+        formats = ["tensorboard"] + (["stdout"] if self.model.verbose >= 1 else [])
+        logger = configure(os.path.join(self.run_dir, self.model_base_name), formats)
+        self.model.set_logger(logger)
+
         print(f"Starting PPO training for {self.cfg.rl.total_timesteps} timesteps...")
         self.model.learn(
             total_timesteps=self.cfg.rl.total_timesteps,
             log_interval=self.cfg.rl.log_interval,
-            tb_log_name=self.model_base_name
         )
-        
+
         if save:
             self.save_model()
 

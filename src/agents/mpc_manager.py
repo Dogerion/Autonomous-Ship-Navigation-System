@@ -6,6 +6,7 @@ import numpy as np
 import scipy.sparse as sparse
 import osqp
 from collections import deque
+from torch.utils.tensorboard import SummaryWriter
 from src.agents.base_manager import BaseManager
 
 class SysIDNet(nn.Module):
@@ -285,7 +286,10 @@ class MPCManager(BaseManager):
         # Create minibatches
         dataset = torch.utils.data.TensorDataset(X, Y)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=True)
-        
+
+        # TensorBoard logging (writes to the same tensorboard_runs/{project} tree as PPO)
+        writer = SummaryWriter(log_dir=os.path.join(self.run_dir, self.model_base_name))
+
         for epoch in range(self.cfg.rl.sysid.epochs):
             epoch_loss = 0.0
             for batch_x, batch_y in dataloader:
@@ -295,10 +299,14 @@ class MPCManager(BaseManager):
                 loss.backward()
                 self.optimizer.step()
                 epoch_loss += loss.item()
-            
-            if epoch % self.cfg.rl.sysid.log_interval == 0:
-                print(f"Epoch {epoch}/{self.cfg.rl.sysid.epochs} - MSE Loss: {epoch_loss/len(dataloader):.6f}")
 
+            avg_loss = epoch_loss / len(dataloader)
+            writer.add_scalar("sysid/mse_loss", avg_loss, epoch)
+
+            if epoch % self.cfg.rl.sysid.log_interval == 0:
+                print(f"Epoch {epoch}/{self.cfg.rl.sysid.epochs} - MSE Loss: {avg_loss:.6f}")
+
+        writer.close()
         print("SysID Training Complete!")
         if save:
             self.save_model()
@@ -338,6 +346,10 @@ class MPCManager(BaseManager):
                 hist_tensor = torch.tensor([padded_history], dtype=torch.float32)
                 predictions = self.sysid_net(hist_tensor)
                 K_hat, T_hat = predictions[0].numpy()
+
+            # Record the GRU's estimate for this step (for the SysID diagnostic plot).
+            step_rec["K_hat"] = float(K_hat)
+            step_rec["T_hat"] = float(T_hat)
 
             # 3. Formulate State and Solve MPC
             # OSQP state: [psi, r, integral_psi]

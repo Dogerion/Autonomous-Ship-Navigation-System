@@ -2,6 +2,8 @@
 
 A research project for ship course-keeping: holding a target heading under random wave noise and unknown, varying ship dynamics.
 
+![Course-correction demo](visuals/example.gif)
+
 It uses the **Strategy pattern** to compare two controllers on the same task:
 
 1. **Reinforcement Learning (PPO)** — a `RecurrentPPO` agent with an LSTM policy. It learns to adapt to the ship's dynamics from the history of its observations, without being told the ship's parameters.
@@ -142,12 +144,17 @@ Each run also saves the animation as a GIF to `visuals/{project_name}/{model_nam
 
 ## Monitoring
 
-PPO training logs the standard Stable-Baselines3 scalars to **TensorBoard** under `tensorboard_runs/<project_name>/` — episode reward and length, policy/value losses, and success rate when available.
+Both agents log to **TensorBoard** under `tensorboard_runs/<project_name>/<model_name>/`:
+
+- **PPO** logs the standard Stable-Baselines3 scalars — episode reward and length, policy/value losses, and success rate when available.
+- **SysID** logs its per-epoch supervised training loss (`sysid/mse_loss`).
 
 ```bash
 tensorboard --logdir ./tensorboard_runs/
 # then open http://localhost:6006
 ```
+
+> Evaluation runs still report their mean/std reward to the console.
 
 ---
 

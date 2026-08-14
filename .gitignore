@@ -16,8 +16,9 @@ tensorboard_runs/
 # Model checkpoints and weights
 models/
 
-# Saved episode visualizations
-visuals/
+# Saved episode visualizations (keep the README demo gif)
+visuals/*
+!visuals/example.gif
 
 # Virtual environments
 .venv
