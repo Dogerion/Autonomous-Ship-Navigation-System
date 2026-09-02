@@ -1,4 +1,4 @@
-# Autonomous Ship Course Keeping System
+# Autonomous Ship Course Keeping Controller
 
 A research project for ship course-keeping. It aims to hold a target heading under random wave noise and unknown, varying ship dynamics.
 
